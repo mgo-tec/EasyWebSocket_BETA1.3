@@ -48,4 +48,4 @@ Other usage is Japanese, please visit my blog.
 
 My Blog: 
 
-https://www.mgo-tec.com
+https://www.mgo-tec.com/blog-entry-easywebsocket-beta13.html

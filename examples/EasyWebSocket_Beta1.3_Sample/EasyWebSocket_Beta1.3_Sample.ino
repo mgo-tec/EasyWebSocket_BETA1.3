@@ -1,7 +1,7 @@
 /*
 WebSocket for ESP-WROOM-02 ( ESP8266 ) Sample Sketch
 for Beta version 1.3
----> https://www.mgo-tec.com
+---> https://www.mgo-tec.com/blog-entry-easywebsocket-beta13.html
 Please rewrite their own the ssid and password.
 Please rewrite their own local IP address of "/data/spiffs_01.txt" in the sketch folder.
 Use the SPIFFS file system uploader, please upload the spiffs_01.txt file to flash.
