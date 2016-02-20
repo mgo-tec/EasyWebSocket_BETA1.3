@@ -1,12 +1,10 @@
 /*
-This is a sample sketch to control dimming the LED in the smartphone browser using 
-WebSocket for ESP-WROOM-02 ( ESP8266 )
-Beta version 1.3
+WebSocket for ESP-WROOM-02 ( ESP8266 ) Sample Sketch
+for Beta version 1.3
 ---> https://www.mgo-tec.com
-
 Please rewrite their own the ssid and password.
 Please rewrite their own local IP address of "/data/spiffs_01.txt" in the sketch folder.
-
+Use the SPIFFS file system uploader, please upload the spiffs_01.txt file to flash.
 */
 #include <EasyWebSocket.h>
 #include <ESP8266WiFi.h>
