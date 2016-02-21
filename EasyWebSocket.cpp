@@ -154,30 +154,37 @@ void EasyWebSocket::EWS_HandShake(String _res_html1, String _res_html2, String _
                 SPIFFS.begin();
 
                 File f1 = SPIFFS.open("/spiffs_01.txt", "r");
-                char c = f1.read();
-                client.print(c);
-                byte spi_count = 0;
-                while(c!='\0'){
-                  c= f1.read();
-                  if(c>0xDD) break;
-                  if(c=='\n')spi_count++;
-                  if(spi_count==10){
-                    Serial.print('.');
-                    spi_count = 0;
-                  }
+                if(f1){
+                  char c = f1.read();
                   client.print(c);
+                  byte spi_count = 0;
+                  while(c!='\0'){
+                    c= f1.read();
+                    if(c>0xDD) break;
+                    if(c=='\n')spi_count++;
+                    if(spi_count==10){
+                      Serial.print('.');
+                      spi_count = 0;
+                    }
+                    client.print(c);
+                  }
+                  Serial.println();
+
+                  f1.close();
+                  
+                  client.print(_res_html1);
+                  client.print(_res_html2);
+                  client.print(_res_html3);
+                  client.print(_res_html4);
+                  client.print(_res_html5);
+                  client.print(_res_html6);
+                  client.print(_res_html7);
+                  
+                }else{
+                  f1.close();
+                  Serial.println(F("ERROR.\r\n spiffs_01.txt file has not been uploaded to the flash in SPIFFS file system"));
+                  client.print(F("ERROR!!<br>spiffs_01.txt file has not been uploaded to the flash in SPIFFS file system"));
                 }
-                Serial.println();
-
-                f1.close();
-
-                client.print(_res_html1);
-                client.print(_res_html2);
-                client.print(_res_html3);
-                client.print(_res_html4);
-                client.print(_res_html5);
-                client.print(_res_html6);
-                client.print(_res_html7);
                 Serial.println(F("---------------------HTTP response complete"));
 
                 _res_html1 = "";
