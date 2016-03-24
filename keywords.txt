@@ -18,7 +18,9 @@ EWS_Body_style	KEYWORD1
 EWS_BrowserReceiveTextTag	KEYWORD1
 EWS_Close_Button	KEYWORD1
 EWS_Window_ReLoad_Button	KEYWORD1
+EWS_WebSocket_Reconnection_Button	KEYWORD1
 EWS_BrowserSendRate	KEYWORD1
 EWS_Status_Text	KEYWORD1
 EWS_Canvas_Slider_T	KEYWORD1
 EWS_TextBox_Send	KEYWORD1
+EWS_Web_Get	KEYWORD1

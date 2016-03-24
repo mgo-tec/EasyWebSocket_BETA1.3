@@ -1,6 +1,6 @@
 /*
   EasyWebsocket.h - WebSocket for ESP-WROOM-02 ( esp8266 )
-  Beta version 1.3
+  Beta version 1.35
 
 The MIT License (MIT)
 
@@ -57,10 +57,12 @@ public:
   String EWS_BrowserReceiveTextTag(String id, byte font_size, String fnt_col);
   String EWS_Close_Button(String name, int width, int height, byte font_size);
   String EWS_Window_ReLoad_Button(String name, int width, int height, byte font_size);
+  String EWS_WebSocket_Reconnection_Button(String name, int width, int height, byte font_size);
   String EWS_BrowserSendRate();
   String EWS_Status_Text(byte font_size, String color);
   String EWS_Canvas_Slider_T(String slider_id, int width, int height, String frame_col, String fill_col);
   String EWS_TextBox_Send(String id, String txt, String BT_txt);
+  String EWS_Web_Get(char* host, String target_ip, uint8_t char_tag, String Final_tag, String Begin_tag, String End_tag, String Paragraph);
   
 private:
   boolean _Ini_html_on = false;

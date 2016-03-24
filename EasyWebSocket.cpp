@@ -1,6 +1,6 @@
 /*
   EasyWebsocket.cpp - WebSocket for ESP-WROOM-02 ( esp8266 )
-  Beta version 1.3
+  Beta version 1.35
 
 The MIT License (MIT)
 
@@ -223,8 +223,8 @@ void EasyWebSocket::EWS_HandShake(String _res_html1, String _res_html2, String _
                 
                 delay(10);                
                 client.stop();
+                delay(10);
                 client.flush();
-                delay(1);
                 Serial.println(F("-----------------Favicon client.stop"));
                 break;
               }
@@ -338,8 +338,9 @@ void EasyWebSocket::EWS_HTTP_Responce()
         
         delay(10);
         client.flush();
+        delay(10);
         client.stop();
-        delay(1);
+
         Serial.println();
         Serial.println(F("---------------------Favicon_Client Stop"));
         LoopTime = millis();
@@ -351,10 +352,10 @@ void EasyWebSocket::EWS_HTTP_Responce()
         while(client.available()){
           Serial.write(client.read());
         }
-        delay(1);
-        client.flush();
+        delay(10);
         client.stop();
-        delay(1);
+        delay(10);
+        client.flush();
         Serial.println();
         Serial.println(F("---------------------apple-touch-icon_Client Stop"));
         LoopTime = millis();
@@ -469,9 +470,9 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
 
       if((millis() - _PongLastTime) > (pTime + 500)){
         delay(10);
-        client.flush();
         client.stop();
-        delay(1);
+        delay(10);
+        client.flush();
         Serial.println();
         Serial.println(F("-----------------Ping Non-Response Client.STOP"));
         _WS_on = false;
@@ -549,8 +550,8 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
       
       delay(10);
       client.stop();
+      delay(10);
       client.flush();
-      delay(1);
       Serial.println();
       Serial.println(F("------------------Client.STOP"));
       _WS_on = false;
@@ -573,7 +574,8 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
             
             delay(10);
             client.stop();
-            delay(1);
+            delay(10);
+            client.flush();
             Serial.println(F("-----------------------Favicon client.stop"));
             Serial.println(client);
             break;
@@ -773,6 +775,22 @@ String EasyWebSocket::EWS_Window_ReLoad_Button(String name, int width, int heigh
   return str;
 }
 
+String EasyWebSocket::EWS_WebSocket_Reconnection_Button(String name, int width, int height, byte font_size)
+{
+  String str;
+  str = "<input type='button' value='";
+  str += name;
+  str += "' style='width:";
+  str += String(width);
+  str += "px; ";
+  str += "height:";
+  str += String(height);
+  str += "px; font-size:";
+  str += String(font_size);
+  str += "px;' onclick='init();'>\r\n";
+  return str;
+}
+
 String EasyWebSocket::EWS_BrowserSendRate()
 {
   String str;
@@ -863,4 +881,73 @@ String EasyWebSocket::EWS_TextBox_Send(String id, String txt, String BT_txt)
   str += "</form>\r\n";
   return str;
 }
+
+String EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_tag, String Final_tag, String Begin_tag, String End_tag, String Paragraph)
+{
+  String str1;
+  String str2;
+  String ret_str = "";
+
+  delay(10);
+  client.stop();
+  delay(10);
+  client.flush();
+  Serial.println(F("--------------------WebSocket Client Stop"));
+ 
+  if (client.connect(host, 80)) {
+    Serial.print(host); Serial.print(F("-------------"));
+    Serial.println(F("connected"));
+    Serial.println(F("--------------------WEB HTTP GET Request"));
+    str1 = "GET " + target_ip + " HTTP/1.1\r\n";
+    str2 = "Host: " + String(host)+"\r\n";
+    client.print(str1);
+    client.print(str2);
+    client.print(F("Content-Type: text/html; charset=UTF-8\r\n"));
+    client.print(F("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"));
+    client.print(F("Content-Language: ja\r\n"));
+    client.print(F("Accept-Language: ja\r\n"));
+    client.print(F("Accept-Charset: UTF-8\r\n"));
+    client.print(F("Connection: close\r\n\r\n"));
+    Serial.print(str1);
+    Serial.println(str2);
+  }else {
+    // kf you didn't get a connection to the server:
+    Serial.println("connection failed");
+  }
+  String dummy_str;
+  uint16_t from, to;
+  if(client){
+    Serial.println(F("--------------------WEB HTTP Response"));
+    while(client.connected()){
+      while (client.available()) {
+        if(dummy_str.indexOf(Final_tag) < 0){
+          dummy_str = client.readStringUntil(char_tag);
+//Serial.println(dummy_str);
+          if(dummy_str.indexOf(Begin_tag) != -1){
+            from = dummy_str.indexOf(Begin_tag) + Begin_tag.length();
+            to = dummy_str.indexOf(End_tag);
+            ret_str += Paragraph;
+            ret_str += dummy_str.substring(from,to);
+            ret_str += "  ";
+          }
+          dummy_str = "";
+        }else{
+          break;
+        }
+      }
+    }
+  }
+  ret_str += "\0";
+ 
+  delay(10);
+  client.stop();
+  delay(10);
+  client.flush();
+  Serial.println(F("--------------------Client Stop"));
+ 
+  _WS_on = false;
+  _Ini_html_on = false;
+  _Upgrade_first_on = false;
   
+  return ret_str;
+}
