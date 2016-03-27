@@ -1,10 +1,19 @@
-# EasyWebSocket_BETA 1.3
+# EasyWebSocket_BETA 1.35
 Simple library for WebSocket communication with ESP-WROOM-02(ESP8266) and smartphone browser.
 
 This requires the Arduino core for ESP8266 WiFi chip library.
 
 https://github.com/esp8266/arduino
 # Change log:
+
+(1.35)
+
+*From the Web to GET requests, add a function to extract the text by analyzing the HTML tags.
+
+*Add to reconnect button of WebSocket communication only.
+
+(1.3)
+
 *Brush up the WebSocket handshake method.
 
 *Reconnection is now easier to.
@@ -23,6 +32,14 @@ https://github.com/esp8266/arduino
 (Japanese)
 
 【更新履歴】
+
+(1.35)
+
+・WebからGETリクエストして、HTMLタグを解析してテキストを抽出する関数を追加。
+
+・WebSocket通信のみの再接続ボタンを追加。
+
+(1.3)
 
 ・WebSocketハンドシェイク方法をブラッシュアップ
 
@@ -49,3 +66,5 @@ Other usage is Japanese, please visit my blog.
 My Blog: 
 
 https://www.mgo-tec.com/blog-entry-easywebsocket-beta13.html
+
+(ver1.35) https://www.mgo-tec.com/blog-entry-wroom-websocket-messageboard-05.html
