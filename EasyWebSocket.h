@@ -2,7 +2,7 @@
   EasyWebsocket.h - WebSocket for ESP-WROOM-02 ( esp8266 )
   Beta version 1.35
 
-The MIT License (MIT)
+Dual licensed under the MIT or GPL Version 2 (2.1) licenses.
 
 Copyright (c) 2016 Mgo-tec
 https://www.mgo-tec.com
@@ -24,6 +24,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Includes ESP8266WiFi.h, Hash.h
+https://github.com/esp8266/Arduino
+Copyright (C) 1991, 1999 Free Software Foundation, Inc.
+Released under the GNU LESSER GENERAL PUBLIC LICENSE Version 2.1
+https://opensource.org/licenses/GPL-2.0
+
+Includes FS.h
+https://github.com/esp8266/arduino-esp8266fs-plugin
+Copyright (C) 1989, 1991 Free Software Foundation, Inc.
+Released under the GNU GENERAL PUBLIC LICENSE Version 2
+https://opensource.org/licenses/GPL-2.0
+
 */
 
 #ifndef EasyWebSocket_h_
