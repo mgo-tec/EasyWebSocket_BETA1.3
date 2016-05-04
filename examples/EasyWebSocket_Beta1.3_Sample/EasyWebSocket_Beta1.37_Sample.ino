@@ -1,7 +1,7 @@
 /*
 WebSocket for ESP-WROOM-02 ( ESP8266 ) Sample Sketch
-for Beta version 1.3
----> https://www.mgo-tec.com/blog-entry-easywebsocket-beta13.html
+for Beta version 1.37
+---> https://www.mgo-tec.com
 Please rewrite their own the ssid and password.
 Please rewrite their own local IP address of "/data/spiffs_01.txt" in the sketch folder.
 Use the SPIFFS file system uploader, please upload the spiffs_01.txt file to flash.
@@ -57,8 +57,8 @@ void setup()
   html_str1 += "<br><br>\r\n";
 
   html_str2 = "LED \r\n";
-  html_str2 += ews.EWS_On_Momentary_Button("ALL", "全点灯", 60,25,15,"#000000","#AAAAAA");
-  html_str2 += ews.EWS_On_Momentary_Button("OUT", "全消灯", 60,25,15,"#FFFFFF","#555555");
+  html_str2 += ews.EWS_On_Momentary_Button("ALL", "全点灯", 65,25,15,"#000000","#AAAAAA");
+  html_str2 += ews.EWS_On_Momentary_Button("OUT", "全消灯", 65,25,15,"#FFFFFF","#555555");
   html_str2 += "<br>\r\n";
   
   html_str3 = "<br>LED BLUE... Dim\r\n";
@@ -91,7 +91,9 @@ void setup()
   html_str6 += "RGB..... \r\n";
   html_str6 += ews.EWS_Touch_Slider_BT("-RGB", "Txt4");
   html_str6 += ews.EWS_Sl_BoxText("Txt4",30,20,15,"#000000");
-  html_str6 += "<br><br><br>\r\n";  
+  html_str6 += "<br><br><br>\r\n";
+  html_str6 += ews.EWS_WebSocket_Reconnection_Button("WS-Reconnect", 200, 40, 17);
+  html_str6 += "<br><br>\r\n";  
   html_str6 += ews.EWS_Close_Button("WS CLOSE",150,40,17);
   html_str6 += ews.EWS_Window_ReLoad_Button("ReLoad",150,40,17);
   html_str6 += "</body></html>\r\n";
@@ -109,7 +111,7 @@ void loop() {
   String str;
 
   if(ret_str != "_close"){
-    if(millis()-CountTime > 500){//Data transmission from WROOM (ESP8266) every 500ms
+    if(millis()-CountTime > 10){//Data transmission from WROOM (ESP8266) every 500ms
       if(cnt > 3){
         cnt = 0;
       }

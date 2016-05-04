@@ -1,42 +1,38 @@
 /*
   EasyWebsocket.cpp - WebSocket for ESP-WROOM-02 ( esp8266 )
-  Beta version 1.35
-
-Dual licensed under the MIT or GPL Version 2 (2.1) licenses.
+  Beta version 1.37
 
 Copyright (c) 2016 Mgo-tec
-https://www.mgo-tec.com
+This library improvement collaborator is Mr.Visyeii.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This library is used by the Arduino IDE(Tested in ver1.6.8).
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Reference LGPL-2.1 license statement --> https://opensource.org/licenses/LGPL-2.1
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Reference Blog --> https://www.mgo-tec.com
 
-Includes ESP8266WiFi.h, Hash.h
-https://github.com/esp8266/Arduino
-Copyright (C) 1991, 1999 Free Software Foundation, Inc.
+The esp8266 core for Arduino(Tested in ver2.2.0) --> https://github.com/esp8266/Arduino
 Released under the GNU LESSER GENERAL PUBLIC LICENSE Version 2.1
-https://opensource.org/licenses/GPL-2.0
 
-Includes FS.h
-https://github.com/esp8266/arduino-esp8266fs-plugin
-Copyright (C) 1989, 1991 Free Software Foundation, Inc.
-Released under the GNU GENERAL PUBLIC LICENSE Version 2
-https://opensource.org/licenses/GPL-2.0
+ESP8266WiFi.h - Included WiFi library for esp8266
+WiFiServer.cpp - The library modification
+Copyright (c) 2014 Ivan Grokhotkov.
+This file is part of the esp8266 core for Arduino environment.
+Released under the GNU LESSER GENERAL PUBLIC LICENSE Version 2.1
 
+Hash.h - Included library
+Copyright (c) 2015 Markus Sattler.
+This file is part of the esp8266 core for Arduino environment.
+Released under the GNU LESSER GENERAL PUBLIC LICENSE Version 2.1
+
+FS.h(SPIFFS-File system) - Included library
+-->https://github.com/esp8266/arduino-esp8266fs-plugin
+Copyright (c) 2015 Ivan Grokhotkov. All rights reserved.
+Released under the GNU LESSER GENERAL PUBLIC LICENSE Version 2.1
 */
 
 #include "Arduino.h"
@@ -44,9 +40,11 @@ https://opensource.org/licenses/GPL-2.0
 
 const char* GUID_str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-WiFiClient client;
+WiFiClient __client;
 WiFiServer server(80);
 
+HTTPClientStatus _currentStatus;
+uint32_t _statusChange;
 EasyWebSocket::EasyWebSocket(){}
 
 //********AP(Router) Connection****
@@ -68,26 +66,83 @@ void EasyWebSocket::AP_Connect(const char* ssid, const char* password)
   Serial.println(F("WiFi connected"));
   
   // Start the server
+  _currentStatus = HC_NONE;
   server.begin();
   Serial.println(F("Server started"));
 
   // Print the IP address
   Serial.println(WiFi.localIP());
   delay(10);
+  _Upgrade_first_on = false;
 }
+//*********handleClient***************
+void EasyWebSocket::handleClient()
+{
+  if (_currentStatus == HC_NONE) {
+    WiFiClient _local_client = server.available();
+    if (!_local_client) {
+      return;
+    }
 
+#ifdef DEBUG_ESP_HTTP_SERVER
+    DEBUG_OUTPUT.println("New client");
+#endif
+
+    __client = _local_client;
+    _currentStatus = HC_WAIT_READ;
+    _statusChange = millis();
+  }
+
+  if (!__client.connected()) {
+    __client = WiFiClient();
+    _currentStatus = HC_NONE;
+    return;
+  }
+
+  // Wait for data from client to become available
+  if (_currentStatus == HC_WAIT_READ) {
+    if (!__client.available()) {
+      if (millis() - _statusChange > HTTP_MAX_DATA_WAIT) {
+        __client = WiFiClient();
+        _currentStatus = HC_NONE;
+      }
+      yield();
+      return;
+    }
+
+    if (!__client.connected()) {
+      __client = WiFiClient();
+      _currentStatus = HC_NONE;
+      return;
+    } else {
+      _currentStatus = HC_WAIT_CLOSE;
+      _statusChange = millis();
+      return;
+    }
+  }
+
+  if (_currentStatus == HC_WAIT_CLOSE) {
+    if (millis() - _statusChange > HTTP_MAX_CLOSE_WAIT) {
+      __client = WiFiClient();
+      _currentStatus = HC_NONE;
+    } else {
+      yield();
+      return;
+    }
+  }
+}
 //********WebSocket Hand Shake ****************
 void EasyWebSocket::EWS_HandShake(String _res_html1, String _res_html2, String _res_html3, String _res_html4, String _res_html5, String _res_html6, String _res_html7)
 {
   String req;
   String hash_req_key;
-  long LoopTime = millis();
+  uint32_t LoopTime = millis();
   
   if(!_WS_on){
-    client = server.available();
+    handleClient();
   }
   
-  if(client){
+  if(__client){
     LoopTime = millis();
     while(!_WS_on){
 
@@ -96,9 +151,9 @@ void EasyWebSocket::EWS_HandShake(String _res_html1, String _res_html2, String _
         _Ini_html_on = false;
         _Upgrade_first_on = false;
         Serial.println(F("-----------------------Received TimeOut 1"));
-        if(client){
+        if(__client){
           delay(10);
-          client.stop();
+          __client.stop();
           Serial.println(F("---------------------TimeOut Client Stop 1"));
         }
         Serial.println(F("-----------------------The Handshake returns to the beginning 1"));
@@ -109,31 +164,30 @@ void EasyWebSocket::EWS_HandShake(String _res_html1, String _res_html2, String _
       switch(_Ini_html_on){
         case false:
           LoopTime = millis();
-          while(client){
+          while(__client){
             if(millis()-LoopTime > 5000L){
               _WS_on = false;
               _Ini_html_on = false;
               _Upgrade_first_on = false;
               Serial.println(F("-----------------------Received TimeOut 2"));
-              if(client){
+              if(__client){
                 delay(10);
-                client.stop();
+                __client.stop();
                 Serial.println(F("---------------------TimeOut Client Stop 2"));
               }
               Serial.println(F("-----------------------The Handshake returns to the beginning 2"));
 
               break;
             }
-            if(client.available()){
-              req = client.readStringUntil('\n');
-
+            if(__client.available()){
+              req = __client.readStringUntil('\n');
               if(req.indexOf("GET / HTTP") != -1){
                 Serial.println(F("-------------------HTTP Request from Browser"));
                 Serial.println(req);
 
                 while(req.indexOf("\r") != 0){
-                  req = client.readStringUntil('\n');
-                  if(req.indexOf("Connection: Upgrade") != -1){
+                  req = __client.readStringUntil('\n');
+                  if(req.indexOf("Upgrade: websocket") != -1){
                     Serial.println(F("-------------------Connection: Upgrade HTTP Request"));
                     Serial.println(req);
                     _Ini_html_on = true;
@@ -160,43 +214,51 @@ void EasyWebSocket::EWS_HandShake(String _res_html1, String _res_html2, String _
                 Serial.println(F("-------------------HTTP Response Send to Browser"));
                 delay(10);
 
-                client.print(F("HTTP/1.1 200 OK\r\n"));
-                client.print(F("Content-Type:text/html\r\n"));
-                client.print(F("Connection:close\r\n\r\n"));
+                __client.print(F("HTTP/1.1 200 OK\r\n"));
+                __client.print(F("Content-Type:text/html\r\n"));
+                __client.print(F("Connection:close\r\n\r\n"));
 
                 SPIFFS.begin();
 
                 File f1 = SPIFFS.open("/spiffs_01.txt", "r");
                 if(f1){
                   char c = f1.read();
-                  client.print(c);
-                  byte spi_count = 0;
+                  char c_print_buff[256];
+                  uint16_t index_count = 0;
+                  c_print_buff[0] = c;
+                  index_count++;
                   while(c!='\0'){
                     c= f1.read();
+                    c_print_buff[index_count] = c;
                     if(c>0xDD) break;
-                    if(c=='\n')spi_count++;
-                    if(spi_count==10){
+                    index_count++;
+                    if (index_count == 256){
+                      __client.write((const char*)c_print_buff, 256);
                       Serial.print('.');
-                      spi_count = 0;
+                      index_count = 0;
                     }
-                    client.print(c);
+                  }
+                  
+                  if (index_count > 0){
+                      __client.write((const char*)c_print_buff, index_count);
+                      index_count = 0;
                   }
                   Serial.println();
 
                   f1.close();
                   
-                  client.print(_res_html1);
-                  client.print(_res_html2);
-                  client.print(_res_html3);
-                  client.print(_res_html4);
-                  client.print(_res_html5);
-                  client.print(_res_html6);
-                  client.print(_res_html7);
+                  __client.print(_res_html1);
+                  __client.print(_res_html2);
+                  __client.print(_res_html3);
+                  __client.print(_res_html4);
+                  __client.print(_res_html5);
+                  __client.print(_res_html6);
+                  __client.print(_res_html7);
                   
                 }else{
                   f1.close();
                   Serial.println(F("ERROR.\r\n spiffs_01.txt file has not been uploaded to the flash in SPIFFS file system"));
-                  client.print(F("ERROR!!<br>spiffs_01.txt file has not been uploaded to the flash in SPIFFS file system"));
+                  __client.print(F("ERROR!!<br>spiffs_01.txt file has not been uploaded to the flash in SPIFFS file system"));
                 }
                 Serial.println(F("---------------------HTTP response complete"));
 
@@ -208,10 +270,10 @@ void EasyWebSocket::EWS_HandShake(String _res_html1, String _res_html2, String _
                 _res_html6 = "";
                 _res_html7 = "";
 
-                client.flush();
+                __client.flush();
                 delay(10);
 
-                client.stop();
+                __client.stop();
 
                 delay(10);
 
@@ -226,18 +288,19 @@ void EasyWebSocket::EWS_HandShake(String _res_html1, String _res_html2, String _
               }else if(req.indexOf("GET /favicon") != -1){
                 Serial.println(F("-----------------------Favicon GET Request Received 1"));
                 _Ini_html_on = true;
+                _Upgrade_first_on = false;
                 Serial.println(req);
-                while(client.available()){
-                  Serial.write(client.read());
+                while(__client.available()){
+                  Serial.write(__client.read());
                 }
                 
-                client.print(F("HTTP/1.1 404 Not Found\r\n"));
-                client.print(F("Connection:close\r\n\r\n"));
+                __client.print(F("HTTP/1.1 404 Not Found\r\n"));
+                __client.print(F("Connection:close\r\n\r\n"));
                 
                 delay(10);                
-                client.stop();
+                __client.stop();
                 delay(10);
-                client.flush();
+                __client.flush();
                 Serial.println(F("-----------------Favicon client.stop"));
                 break;
               }
@@ -267,36 +330,36 @@ void EasyWebSocket::EWS_HTTP_Responce()
 {  
   String req;
   String hash_req_key;
-  long LoopTime = millis();
+  uint32_t LoopTime = millis();
   
   if(_Upgrade_first_on != true){
-    client = server.available();
+    handleClient();
   }
 
-  while(client){
+  while(__client){
     if(millis()-LoopTime > 5000L){
       _WS_on = false;
       _Ini_html_on = false;
       _Upgrade_first_on = false;
       Serial.println(F("-----------------------Received TimeOut 3"));
-      if(client){
+      if(__client){
         delay(10);
-        client.stop();
+        __client.stop();
         Serial.println(F("---------------------TimeOut Client Stop 3"));
       }
       Serial.println(F("-----------------------The Handshake returns to the beginning 3"));
       break;
     }
 
-    if(client.available()){
-      req = client.readStringUntil('\n');
+    if(__client.available()){
+      req = __client.readStringUntil('\n');
       Serial.println(req);
-      if (req.indexOf("websocket") != -1){
+      if (_Upgrade_first_on == true || req.indexOf("Upgrade: websocket") != -1){
         Serial.println(F("---------------------Websocket Requests received"));
         Serial.println(req);
  
         while(req.indexOf("\r") != 0){
-          req = client.readStringUntil('\n');
+          req = __client.readStringUntil('\n');
           Serial.println(req);
           if(req.indexOf("Sec-WebSocket-Key")>=0){
             hash_req_key = req.substring(req.indexOf(':')+2,req.indexOf('\r'));
@@ -321,7 +384,7 @@ void EasyWebSocket::EWS_HTTP_Responce()
         str += "Upgrade: websocket\r\n";
         str += "Connection: Upgrade\r\n";
         str += "Sec-WebSocket-Accept: ";
-        for(byte i=0; i<28; i++){
+        for(uint8_t i=0; i<28; i++){
           str += h_resp_key[i];
         }
 
@@ -329,7 +392,7 @@ void EasyWebSocket::EWS_HTTP_Responce()
         
         Serial.println(F("\n--------------------WebSocket HTTP Response Send"));
         Serial.println(str);
-        client.print(str);
+        __client.print(str);
         str = "";
   
         _WS_on = true;
@@ -340,19 +403,19 @@ void EasyWebSocket::EWS_HTTP_Responce()
 
         Serial.println(F("---------------------Favicon GET Request Received 2"));
         Serial.println(req);
-        while(client.available()){
-          Serial.write(client.read());
+        while(__client.available()){
+          Serial.write(__client.read());
         }
         
         
-        client.print(F("HTTP/1.1 404 Not Found\r\n"));
-        client.print(F("Connection:close\r\n\r\n"));
+        __client.print(F("HTTP/1.1 404 Not Found\r\n"));
+        __client.print(F("Connection:close\r\n\r\n"));
                 
         
         delay(10);
-        client.flush();
+        __client.flush();
         delay(10);
-        client.stop();
+        __client.stop();
 
         Serial.println();
         Serial.println(F("---------------------Favicon_Client Stop"));
@@ -362,13 +425,13 @@ void EasyWebSocket::EWS_HTTP_Responce()
         Serial.println();
         Serial.println(F("---------------------GET apple-touch-icon Request"));
         Serial.print(req);
-        while(client.available()){
-          Serial.write(client.read());
+        while(__client.available()){
+          Serial.write(__client.read());
         }
         delay(10);
-        client.stop();
+        __client.stop();
         delay(10);
-        client.flush();
+        __client.flush();
         Serial.println();
         Serial.println(F("---------------------apple-touch-icon_Client Stop"));
         LoopTime = millis();
@@ -386,10 +449,10 @@ void EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
                       'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/',
                       '='
                     };
-  byte hash_six[27];
-  byte dummy_h1, dummy_h2;
-  byte bb;
-  byte i, j;
+  uint8_t hash_six[27];
+  uint8_t dummy_h1, dummy_h2;
+  uint8_t bb;
+  uint8_t i, j;
   i=0;
   j=0;
   
@@ -402,7 +465,7 @@ void EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
   Serial.print(F("SHA1:"));
   Serial.println(sha1(merge_str));
 
-  byte hash[20];
+  uint8_t hash[20];
   sha1(merge_str, &hash[0]);
 
   for( i = 0; i < 20; i++) {
@@ -461,17 +524,17 @@ void EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
 void EasyWebSocket::EWS_ESP8266_Str_SEND(String str, String id)
 {
   str += '|' + id + '|';
-  client.write(B10000001);
-  client.write(str.length());
-  client.print(str); 
+  __client.write(B10000001);
+  __client.write(str.length());
+  __client.print(str); 
 }
 
-String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
+String EasyWebSocket::EWS_ESP8266CharReceive(uint16_t pTime)
 {
-  byte b=0;
-  byte data_len;
-  byte mask[4];
-  byte i;
+  uint8_t b=0;
+  uint8_t data_len;
+  uint8_t mask[4];
+  uint8_t i;
   String str_close = "_close";
 
   if(_WS_on){
@@ -483,9 +546,9 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
 
       if((millis() - _PongLastTime) > (pTime + 500)){
         delay(10);
-        client.stop();
+        __client.stop();
         delay(10);
-        client.flush();
+        __client.flush();
         Serial.println();
         Serial.println(F("-----------------Ping Non-Response Client.STOP"));
         _WS_on = false;
@@ -496,8 +559,8 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
     }
   }
   
-  if(client.available()){
-    b = client.read();
+  if(__client.available()){
+    b = __client.read();
     if(b == B10000001 || b == B10001010){
       switch (b){
         case B10000001:
@@ -510,18 +573,18 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
           break;
       }
 
-      b = client.read();
+      b = __client.read();
       data_len = b - B10000000;
 
       for(i=0; i<4; i++){
-        mask[i] = client.read();
+        mask[i] = __client.read();
       }
       
-      byte m_data[data_len];
+      uint8_t m_data[data_len];
       char data_c[data_len + 1];
           
       for(i = 0; i<data_len; i++){
-        m_data[i] = client.read();
+        m_data[i] = __client.read();
         data_c[i] = mask[i%4]^m_data[i];
       }
       data_c[data_len] = '\0';
@@ -530,24 +593,24 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
 
     }else if(b == B10001000){
       Serial.println(F("------------------Close Command Received"));
-      b = client.read();
+      b = __client.read();
       Serial.println(b,BIN);
       data_len = b - B10000000;
       if(data_len == 0){
-        while(client.available()){
-          b = client.read();
+        while(__client.available()){
+          b = __client.read();
         }
         Serial.println("Closing HandShake OK!");
       }else{
         for(i=0; i<4; i++){
-          mask[i] = client.read();
+          mask[i] = __client.read();
         }
 
-        byte m_data2[data_len];
+        uint8_t m_data2[data_len];
         char data_c2[data_len + 1];
 
         for(i = 0; i<data_len; i++){
-          m_data2[i] = client.read();
+          m_data2[i] = __client.read();
           data_c2[i] = mask[i%4]^m_data2[i];
 //          Serial.println(data_c2[i],BIN);
         }
@@ -557,40 +620,40 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
       }    
       
       delay(1);
-      client.write(B10001000);
+      __client.write(B10001000);
       delay(1);
       Serial.println(F("------------------Close Command Send"));
       
       delay(10);
-      client.stop();
+      __client.stop();
       delay(10);
-      client.flush();
+      __client.flush();
       Serial.println();
       Serial.println(F("------------------Client.STOP"));
       _WS_on = false;
       _Ini_html_on = false;
       _Upgrade_first_on = false;
       
-      while(client){
-        if(client.available()){
-          String req = client.readStringUntil('\n');
+      while(__client){
+        if(__client.available()){
+          String req = __client.readStringUntil('\n');
           Serial.println(req);
           if(req.indexOf("GET /favicon") != -1){
             Serial.println(F("------------------------Favicon GET Request Received 3"));
 
-            while(client.available()){
-              Serial.write(client.read());
+            while(__client.available()){
+              Serial.write(__client.read());
             }
             
-            client.print(F("HTTP/1.1 404 Not Found\r\n"));
-            client.print(F("Connection:close\r\n\r\n"));
+            __client.print(F("HTTP/1.1 404 Not Found\r\n"));
+            __client.print(F("Connection:close\r\n\r\n"));
             
             delay(10);
-            client.stop();
+            __client.stop();
             delay(10);
-            client.flush();
+            __client.flush();
             Serial.println(F("-----------------------Favicon client.stop"));
-            Serial.println(client);
+            Serial.println(__client);
             break;
           }
         }
@@ -605,9 +668,9 @@ String EasyWebSocket::EWS_ESP8266CharReceive(int pTime)
 
 void EasyWebSocket::EWS_PING_SEND()
 {
-  client.write(B10001001);
-  client.write(4);
-  client.print(F("Ping"));
+  __client.write(B10001001);
+  __client.write(4);
+  __client.print(F("Ping"));
   Serial.println();
   Serial.println(F("Ping Send-----------"));
 }
@@ -623,7 +686,7 @@ String EasyWebSocket::EWS_Body_style(String text_color, String bg_color)
   return str;
 }
 
-String EasyWebSocket::EWS_OnOff_Button(String button_id, int width, int height, byte font_size, String f_color, String b_color)
+String EasyWebSocket::EWS_OnOff_Button(String button_id, uint16_t width, uint16_t height, uint8_t font_size, String f_color, String b_color)
 {
   String str;
   str = "<input type='button' value='OFF' onClick=\"OnOffBt(this,'";
@@ -645,7 +708,7 @@ String EasyWebSocket::EWS_OnOff_Button(String button_id, int width, int height, 
   return str;
 }
 
-String EasyWebSocket::EWS_On_Momentary_Button(String button_id, String text, int width, int height, byte font_size, String f_color, String b_color)
+String EasyWebSocket::EWS_On_Momentary_Button(String button_id, String text, uint16_t width, uint16_t height, uint8_t font_size, String f_color, String b_color)
 {
   String str;
   str = "<input type='button' value='";
@@ -715,7 +778,7 @@ String EasyWebSocket::EWS_Mouse_Slider_T(String slider_id, String txt_id)
   return str;
 }
 
-String EasyWebSocket::EWS_Sl_BoxText(String vbox_id, int width, int height, byte font_size, String color)
+String EasyWebSocket::EWS_Sl_BoxText(String vbox_id, uint16_t width, uint16_t height, uint8_t font_size, String color)
 {
   String str;
   str = "<input type='number' id='";
@@ -733,7 +796,7 @@ String EasyWebSocket::EWS_Sl_BoxText(String vbox_id, int width, int height, byte
   return str;
 }
 
-String EasyWebSocket::EWS_Sl_Text(String text_id, byte font_size, String color)
+String EasyWebSocket::EWS_Sl_Text(String text_id, uint8_t font_size, String color)
 {
   String str;
   str = "<span id='";
@@ -746,7 +809,7 @@ String EasyWebSocket::EWS_Sl_Text(String text_id, byte font_size, String color)
   return str;
 }
 
-String EasyWebSocket::EWS_BrowserReceiveTextTag(String id, byte font_size, String fnt_col)
+String EasyWebSocket::EWS_BrowserReceiveTextTag(String id, uint8_t font_size, String fnt_col)
 {
   String str;
   str = "<span id='" + id;
@@ -756,7 +819,7 @@ String EasyWebSocket::EWS_BrowserReceiveTextTag(String id, byte font_size, Strin
   return str;
 }
 
-String EasyWebSocket::EWS_Close_Button(String name, int width, int height, byte font_size)
+String EasyWebSocket::EWS_Close_Button(String name, uint16_t width, uint16_t height, uint8_t font_size)
 {
   String str;
   str = "<input type='button' value='";
@@ -772,7 +835,7 @@ String EasyWebSocket::EWS_Close_Button(String name, int width, int height, byte 
   return str;
 }
 
-String EasyWebSocket::EWS_Window_ReLoad_Button(String name, int width, int height, byte font_size)
+String EasyWebSocket::EWS_Window_ReLoad_Button(String name, uint16_t width, uint16_t height, uint8_t font_size)
 {
   String str;
   str = "<input type='button' value='";
@@ -788,7 +851,7 @@ String EasyWebSocket::EWS_Window_ReLoad_Button(String name, int width, int heigh
   return str;
 }
 
-String EasyWebSocket::EWS_WebSocket_Reconnection_Button(String name, int width, int height, byte font_size)
+String EasyWebSocket::EWS_WebSocket_Reconnection_Button(String name, uint16_t width, uint16_t height, uint8_t font_size)
 {
   String str;
   str = "<input type='button' value='";
@@ -827,7 +890,7 @@ String EasyWebSocket::EWS_BrowserSendRate()
   return str;
 }
 
-String EasyWebSocket::EWS_Status_Text(byte font_size, String color)
+String EasyWebSocket::EWS_Status_Text(uint8_t font_size, String color)
 {
   String str;
   str = "<span id='__wsStatus__' style='font-size:";
@@ -838,7 +901,7 @@ String EasyWebSocket::EWS_Status_Text(byte font_size, String color)
   return str;
 }
 
-String EasyWebSocket::EWS_Canvas_Slider_T(String slider_id, int width, int height, String frame_col, String fill_col)
+String EasyWebSocket::EWS_Canvas_Slider_T(String slider_id, uint16_t width, uint16_t height, String frame_col, String fill_col)
 {
   String str;
   str = "<canvas id='" + slider_id + "' width='" + String(width) + "' height='" + String(height) + "'></canvas>\r\n";
@@ -902,25 +965,25 @@ String EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_tag
   String ret_str = "";
 
   delay(10);
-  client.stop();
+  __client.stop();
   delay(10);
-  client.flush();
+  __client.flush();
   Serial.println(F("--------------------WebSocket Client Stop"));
  
-  if (client.connect(host, 80)) {
+  if (__client.connect(host, 80)) {
     Serial.print(host); Serial.print(F("-------------"));
     Serial.println(F("connected"));
     Serial.println(F("--------------------WEB HTTP GET Request"));
     str1 = "GET " + target_ip + " HTTP/1.1\r\n";
     str2 = "Host: " + String(host)+"\r\n";
-    client.print(str1);
-    client.print(str2);
-    client.print(F("Content-Type: text/html; charset=UTF-8\r\n"));
-    client.print(F("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"));
-    client.print(F("Content-Language: ja\r\n"));
-    client.print(F("Accept-Language: ja\r\n"));
-    client.print(F("Accept-Charset: UTF-8\r\n"));
-    client.print(F("Connection: close\r\n\r\n"));
+    __client.print(str1);
+    __client.print(str2);
+    __client.print(F("Content-Type: text/html; charset=UTF-8\r\n"));
+    __client.print(F("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"));
+    __client.print(F("Content-Language: ja\r\n"));
+    __client.print(F("Accept-Language: ja\r\n"));
+    __client.print(F("Accept-Charset: UTF-8\r\n"));
+    __client.print(F("Connection: close\r\n\r\n"));
     Serial.print(str1);
     Serial.println(str2);
   }else {
@@ -929,12 +992,12 @@ String EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_tag
   }
   String dummy_str;
   uint16_t from, to;
-  if(client){
+  if(__client){
     Serial.println(F("--------------------WEB HTTP Response"));
-    while(client.connected()){
-      while (client.available()) {
+    while(__client.connected()){
+      while (__client.available()) {
         if(dummy_str.indexOf(Final_tag) < 0){
-          dummy_str = client.readStringUntil(char_tag);
+          dummy_str = __client.readStringUntil(char_tag);
 //Serial.println(dummy_str);
           if(dummy_str.indexOf(Begin_tag) != -1){
             from = dummy_str.indexOf(Begin_tag) + Begin_tag.length();
@@ -953,9 +1016,9 @@ String EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_tag
   ret_str += "\0";
  
   delay(10);
-  client.stop();
+  __client.stop();
   delay(10);
-  client.flush();
+  __client.flush();
   Serial.println(F("--------------------Client Stop"));
  
   _WS_on = false;
