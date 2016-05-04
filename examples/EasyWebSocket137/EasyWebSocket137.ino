@@ -111,7 +111,7 @@ void loop() {
   String str;
 
   if(ret_str != "_close"){
-    if(millis()-CountTime > 10){//Data transmission from WROOM (ESP8266) every 500ms
+    if(millis()-CountTime > 500){//Data transmission from WROOM (ESP8266) every 500ms
       if(cnt > 3){
         cnt = 0;
       }
