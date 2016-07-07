@@ -7,6 +7,7 @@ https://github.com/esp8266/arduino
 # Change log:
 
 (1.39)
+
 *It added support for SoftAP mode.
 
 (1.37)
@@ -47,6 +48,9 @@ Mr. Visyeii, Thank you very much.
 (Japanese)
 
 【更新履歴】
+(1.39)
+
+ESP-WROOM-02 (ESP8266) の SoftAPモードに対応しました。詳しくはサンプルスケッチをご覧ください。
 
 (1.37)
 
