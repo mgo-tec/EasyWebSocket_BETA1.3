@@ -1,6 +1,6 @@
 /*
   EasyWebsocket.cpp - WebSocket for ESP-WROOM-02 ( esp8266 )
-  Beta version 1.37
+  Beta version 1.39
 
 Copyright (c) 2016 Mgo-tec
 This library improvement collaborator is Mr.Visyeii.
@@ -64,6 +64,33 @@ void EasyWebSocket::AP_Connect(const char* ssid, const char* password)
   }
   Serial.println("");
   Serial.println(F("WiFi connected"));
+  
+  // Start the server
+  _currentStatus = HC_NONE;
+  server.begin();
+  Serial.println(F("Server started"));
+
+  // Print the IP address
+  Serial.println(WiFi.localIP());
+  delay(10);
+  _Upgrade_first_on = false;
+}
+void EasyWebSocket::SoftAP_setup(const char* ssid, const char* password)
+{
+  Serial.begin(115200);
+  // Connect to WiFi network
+  Serial.println();
+  Serial.print(F("Connecting to "));
+  Serial.println(ssid);
+  
+  WiFi.mode(WIFI_AP);
+   
+  WiFi.softAP(ssid, password);
+  
+  delay(1000);
+   
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print(F("AP IP address: "));  Serial.println(myIP);
   
   // Start the server
   _currentStatus = HC_NONE;
@@ -962,6 +989,7 @@ String EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_tag
 {
   String str1;
   String str2;
+  String str3;
   String ret_str = "";
 
   delay(10);
@@ -974,20 +1002,19 @@ String EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_tag
     Serial.print(host); Serial.print(F("-------------"));
     Serial.println(F("connected"));
     Serial.println(F("--------------------WEB HTTP GET Request"));
-    str1 = "GET " + target_ip + " HTTP/1.1\r\n";
-    str2 = "Host: " + String(host)+"\r\n";
-    __client.print(str1);
-    __client.print(str2);
-    __client.print(F("Content-Type: text/html; charset=UTF-8\r\n"));
-    __client.print(F("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"));
-    __client.print(F("Content-Language: ja\r\n"));
-    __client.print(F("Accept-Language: ja\r\n"));
-    __client.print(F("Accept-Charset: UTF-8\r\n"));
-    __client.print(F("Connection: close\r\n\r\n"));
-    Serial.print(str1);
-    Serial.println(str2);
+    str1 = "GET " + target_ip + " HTTP/1.1\r\n" + "Host: " + String(host)+"\r\n";
+      
+    char cstr1[str1.length()+1];
+    str1.toCharArray(cstr1, str1.length()+1);
+    const char* cstr2 = "Content-Type: text/html; charset=UTF-8\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\nContent-Language: ja\r\nAccept-Language: ja\r\nAccept-Charset: UTF-8\r\nConnection: close\r\n\r\n";
+
+    __client.write((const char*)cstr1, str1.length());
+    __client.write((const char*)cstr2, strlen(cstr2));
+
+    Serial.println(str1);
+
   }else {
-    // kf you didn't get a connection to the server:
+    // if you didn't get a connection to the server:
     Serial.println("connection failed");
   }
   String dummy_str;
@@ -998,7 +1025,6 @@ String EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_tag
       while (__client.available()) {
         if(dummy_str.indexOf(Final_tag) < 0){
           dummy_str = __client.readStringUntil(char_tag);
-//Serial.println(dummy_str);
           if(dummy_str.indexOf(Begin_tag) != -1){
             from = dummy_str.indexOf(Begin_tag) + Begin_tag.length();
             to = dummy_str.indexOf(End_tag);

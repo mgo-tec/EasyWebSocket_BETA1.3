@@ -1,6 +1,6 @@
 /*
   EasyWebsocket.h - WebSocket for ESP-WROOM-02 ( esp8266 )
-  Beta version 1.37
+  Beta version 1.39
 
 Copyright (c) 2016 Mgo-tec
 This library improvement collaborator is Mr.Visyeii.
@@ -50,6 +50,7 @@ public:
   EasyWebSocket();
 
   void AP_Connect(const char* ssid, const char* password);
+  void SoftAP_setup(const char* ssid, const char* password);
   void handleClient();
   void EWS_HandShake(String _res_html1, String _res_html2, String _res_html3, String _res_html4, String _res_html5, String _res_html6, String _res_html7);
   void EWS_HTTP_Responce();
