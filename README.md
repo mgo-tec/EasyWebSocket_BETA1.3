@@ -17,10 +17,10 @@ https://github.com/esp8266/arduino
 Mr. Visyeii, Thank you very much.
 
 *And speed of loading the spiffs_01.txt file in SPIFFS file system at the time of access from the first of the smartphone browser is much up, display of the browser is now faster.
-<ul>
+
 *Fixed a WebSocket reconnect button in (confirmed by ver 9.3.1) iOS.  
 *Connections at the time I was allowed to divert the handleClient function from the library WiFiServer.cpp of Arduino core for ESP8266 WiFi chip in. I think the connection has become more reliable.
-</ul>
+
 
 (1.35)
 
