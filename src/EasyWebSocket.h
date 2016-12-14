@@ -1,5 +1,5 @@
 /*
-  EasyWebsocket.h - WebSocket for ESP-WROOM-02 ( esp8266 )
+  EasyWebSocket.h - WebSocket for ESP-WROOM-02 ( esp8266 )
   Beta version 1.39
 
 Copyright (c) 2016 Mgo-tec

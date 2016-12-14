@@ -36,7 +36,7 @@ Released under the GNU LESSER GENERAL PUBLIC LICENSE Version 2.1
 */
 
 #include "Arduino.h"
-#include "EasyWebsocket.h"
+#include "EasyWebSocket.h"
 
 const char* GUID_str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
